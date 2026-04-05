@@ -1,40 +1,49 @@
 import 'package:dio/dio.dart';
 
 import '../../../core/constants/app_config.dart';
-import '../models/login_request.dart';
-import '../models/login_response.dart';
-import '../models/me_response.dart';
+import '../../auth/models/me_response.dart';
 
-class AuthApiService {
-  AuthApiService(this._dio);
+class ProfileApiService {
+  ProfileApiService(this._dio);
 
   final Dio _dio;
 
-  Future<LoginResponse> login(LoginRequest request) async {
+  Future<void> updateMe({
+    required String accessToken,
+    required String name,
+    required String username,
+    String? imagePath,
+  }) async {
     try {
-      final response = await _dio.post<Map<String, dynamic>>(
-        AppConfig.loginEndpoint,
-        data: request.toJson(),
+      final payload = <String, dynamic>{'name': name, 'username': username};
+
+      final trimmedImagePath = (imagePath ?? '').trim();
+      if (trimmedImagePath.isNotEmpty) {
+        payload['image'] = await MultipartFile.fromFile(
+          trimmedImagePath,
+          filename: trimmedImagePath.split('/').last,
+        );
+      }
+
+      final formData = FormData.fromMap(payload);
+
+      await _dio.put<void>(
+        AppConfig.updateMeEndpoint,
+        data: formData,
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $accessToken',
+            'Content-Type': 'multipart/form-data',
+          },
+        ),
       );
-
-      final data = response.data;
-      if (data == null) {
-        throw Exception('Response login kosong');
-      }
-
-      final parsed = LoginResponse.fromJson(data);
-      if (parsed.accessToken.isEmpty) {
-        throw Exception('Token tidak ditemukan pada response');
-      }
-
-      return parsed;
     } on DioException catch (e) {
       final message = _extractErrorMessage(e.response?.data);
       if (message != null && message.isNotEmpty) {
         throw Exception(message);
       }
 
-      throw Exception('Gagal login. Cek koneksi atau credential.');
+      throw Exception('Gagal memperbarui profil.');
     }
   }
 

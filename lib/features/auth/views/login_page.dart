@@ -29,22 +29,25 @@ class _LoginPageState extends State<LoginPage> {
     final isValid = _formKey.currentState?.validate() ?? false;
     if (!isValid) return;
 
+    final username = _usernameController.text.trim();
     final viewModel = context.read<LoginViewModel>();
     final success = await viewModel.login(
-      username: _usernameController.text.trim(),
+      username: username,
       password: _passwordController.text,
     );
 
     if (!mounted) return;
 
-    if (success && viewModel.session != null) {
+    if (success && viewModel.session != null && viewModel.meData != null) {
       final session = viewModel.session!;
+      final meData = viewModel.meData!;
       Navigator.pushReplacementNamed(
         context,
         '/dashboard',
         arguments: DashboardArgs(
           accessToken: session.accessToken,
           refreshToken: session.refreshToken,
+          meData: meData,
         ),
       );
       return;
