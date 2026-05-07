@@ -13,6 +13,7 @@ class StatusGymViewModel extends ChangeNotifier {
 
   bool _isLoading = false;
   bool _isUpdating = false;
+  bool _isUpdatingEquipment = false;
   String? _errorMessage;
   GymDetail? _gymDetail;
   List<GymEquipment> _equipment = [];
@@ -20,6 +21,7 @@ class StatusGymViewModel extends ChangeNotifier {
 
   bool get isLoading => _isLoading;
   bool get isUpdating => _isUpdating;
+  bool get isUpdatingEquipment => _isUpdatingEquipment;
   String? get errorMessage => _errorMessage;
   GymDetail? get gymDetail => _gymDetail;
   List<GymEquipment> get equipment => List.unmodifiable(_equipment);
@@ -71,6 +73,14 @@ class StatusGymViewModel extends ChangeNotifier {
     await loadGym(gymId);
   }
 
+  void clearGym() {
+    _gymDetail = null;
+    _equipment = [];
+    _errorMessage = null;
+    _currentGymId = null;
+    notifyListeners();
+  }
+
   Future<GymDetail?> updateGym({
     required int gymId,
     required String name,
@@ -116,6 +126,58 @@ class StatusGymViewModel extends ChangeNotifier {
       return null;
     } finally {
       _isUpdating = false;
+      notifyListeners();
+    }
+  }
+
+  Future<GymEquipment?> updateEquipment({
+    required int gymId,
+    required int equipmentId,
+    required String name,
+    required int jumlah,
+    required String description,
+    required String healthStatus,
+    String? videoUrl,
+    String? imagePath,
+  }) async {
+    _isUpdatingEquipment = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final tokens = await _tokenStorage.readTokens();
+      final accessToken = tokens?.accessToken;
+      if (accessToken == null || accessToken.isEmpty) {
+        throw Exception('Sesi tidak ditemukan, silakan login ulang.');
+      }
+
+      final updated = await _repository.updateEquipment(
+        gymId: gymId,
+        equipmentId: equipmentId,
+        accessToken: accessToken,
+        name: name,
+        jumlah: jumlah,
+        description: description,
+        healthStatus: healthStatus,
+        videoUrl: videoUrl,
+        imagePath: imagePath,
+      );
+
+      final next = List<GymEquipment>.from(_equipment);
+      final index = next.indexWhere((item) => item.id == updated.id);
+      if (index >= 0) {
+        next[index] = updated;
+      } else {
+        next.insert(0, updated);
+      }
+      _equipment = next;
+
+      return updated;
+    } catch (e) {
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      return null;
+    } finally {
+      _isUpdatingEquipment = false;
       notifyListeners();
     }
   }

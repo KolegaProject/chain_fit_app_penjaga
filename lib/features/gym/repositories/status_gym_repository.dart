@@ -48,4 +48,28 @@ class StatusGymRepository {
       tag: tag,
     );
   }
+
+  Future<GymEquipment> updateEquipment({
+    required int gymId,
+    required int equipmentId,
+    required String accessToken,
+    required String name,
+    required int jumlah,
+    required String description,
+    required String healthStatus,
+    String? videoUrl,
+    String? imagePath,
+  }) {
+    return _apiService.updateEquipment(
+      gymId: gymId,
+      equipmentId: equipmentId,
+      accessToken: accessToken,
+      name: name,
+      jumlah: jumlah,
+      description: description,
+      healthStatus: healthStatus,
+      videoUrl: videoUrl,
+      imagePath: imagePath,
+    );
+  }
 }

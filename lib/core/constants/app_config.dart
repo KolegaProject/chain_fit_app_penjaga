@@ -13,4 +13,6 @@ class AppConfig {
   static String gymDetailEndpoint(int gymId) => '/api/v1/gym/$gymId';
   static String gymEquipmentEndpoint(int gymId) =>
       '/api/v1/gym/$gymId/equipment';
+  static String gymEquipmentDetailEndpoint(int gymId, int equipmentId) =>
+      '/api/v1/gym/$gymId/equipment/$equipmentId';
 }

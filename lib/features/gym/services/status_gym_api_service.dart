@@ -112,6 +112,66 @@ class StatusGymApiService {
     }
   }
 
+  Future<GymEquipment> updateEquipment({
+    required int gymId,
+    required int equipmentId,
+    required String accessToken,
+    required String name,
+    required int jumlah,
+    required String description,
+    required String healthStatus,
+    String? videoUrl,
+    String? imagePath,
+  }) async {
+    try {
+      final payload = <String, dynamic>{
+        'name': name,
+        'jumlah': jumlah,
+        'description': description,
+        'healthStatus': healthStatus,
+      };
+
+      if (videoUrl != null) {
+        payload['videoURL'] = videoUrl;
+      }
+
+      final trimmedImagePath = (imagePath ?? '').trim();
+      if (trimmedImagePath.isNotEmpty) {
+        payload['image'] = await MultipartFile.fromFile(
+          trimmedImagePath,
+          filename: trimmedImagePath.split('/').last,
+        );
+      }
+
+      final formData = FormData.fromMap(payload);
+
+      final response = await _dio.put<Map<String, dynamic>>(
+        AppConfig.gymEquipmentDetailEndpoint(gymId, equipmentId),
+        data: formData,
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $accessToken',
+            'Content-Type': 'multipart/form-data',
+          },
+        ),
+      );
+
+      final data = response.data;
+      if (data == null) {
+        throw Exception('Response update alat gym kosong');
+      }
+
+      return GymEquipmentDetailResponse.fromJson(data).data;
+    } on DioException catch (e) {
+      final message = _extractErrorMessage(e.response?.data);
+      if (message != null && message.isNotEmpty) {
+        throw Exception(message);
+      }
+
+      throw Exception('Gagal memperbarui alat gym.');
+    }
+  }
+
   String? _extractErrorMessage(dynamic responseData) {
     if (responseData is Map<String, dynamic>) {
       final errors = responseData['errors'];

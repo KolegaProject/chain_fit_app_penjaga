@@ -7,6 +7,7 @@ import '../../auth/viewmodels/login_view_model.dart';
 import '../models/gym_detail_response.dart';
 import '../models/gym_equipment_response.dart';
 import 'gym_edit_page.dart';
+import 'gym_equipment_edit_page.dart';
 import '../viewmodels/status_gym_view_model.dart';
 
 const _pageBackground = Color(0xFFF7F8FB);
@@ -21,6 +22,14 @@ class StatusGymPage extends StatefulWidget {
 
 class _StatusGymPageState extends State<StatusGymPage> {
   int? _loadedGymId;
+  final TextEditingController _searchController = TextEditingController();
+  String _statusFilter = _statusFilterAll;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   void didChangeDependencies() {
@@ -34,15 +43,21 @@ class _StatusGymPageState extends State<StatusGymPage> {
         if (!mounted) {
           return;
         }
-        context.read<StatusGymViewModel>().loadGym(gymId);
+
+        final viewModel = context.read<StatusGymViewModel>();
+        if (gymId == null) {
+          viewModel.clearGym();
+          return;
+        }
+
+        viewModel.loadGym(gymId);
       });
     }
   }
 
-  int _resolveGymId(MeData? data) {
-    final fallbackId = 12;
+  int? _resolveGymId(MeData? data) {
     if (data == null) {
-      return fallbackId;
+      return null;
     }
 
     final defaultId = data.defaultGymId;
@@ -54,7 +69,26 @@ class _StatusGymPageState extends State<StatusGymPage> {
       return data.gyms.first.id;
     }
 
-    return fallbackId;
+    return null;
+  }
+
+  List<GymEquipment> _filterEquipment(List<GymEquipment> items) {
+    final query = _searchController.text.trim().toLowerCase();
+    final filter = _statusFilter;
+
+    return items.where((equipment) {
+      final matchesQuery =
+          query.isEmpty || equipment.name.toLowerCase().contains(query);
+      if (!matchesQuery) {
+        return false;
+      }
+
+      if (filter == _statusFilterAll) {
+        return true;
+      }
+
+      return equipment.healthStatus.toUpperCase() == filter;
+    }).toList();
   }
 
   @override
@@ -74,8 +108,10 @@ class _StatusGymPageState extends State<StatusGymPage> {
               return _ErrorState(
                 message: viewModel.errorMessage ?? 'Gagal memuat data gym.',
                 onRetry: () {
-                  final gymId = _loadedGymId ?? 12;
-                  viewModel.loadGym(gymId);
+                  final gymId = _loadedGymId;
+                  if (gymId != null) {
+                    viewModel.loadGym(gymId);
+                  }
                 },
               );
             }
@@ -84,6 +120,8 @@ class _StatusGymPageState extends State<StatusGymPage> {
             if (gym == null) {
               return const Center(child: Text('Data gym tidak tersedia.'));
             }
+
+            final filteredEquipment = _filterEquipment(viewModel.equipment);
 
             return RefreshIndicator(
               onRefresh: viewModel.refresh,
@@ -119,20 +157,54 @@ class _StatusGymPageState extends State<StatusGymPage> {
                   SliverToBoxAdapter(
                     child: _SectionHeader(
                       title: 'Peralatan Gym',
-                      subtitle: '${viewModel.equipment.length} item',
+                      subtitle: '${filteredEquipment.length} item',
+                    ),
+                  ),
+                  SliverToBoxAdapter(
+                    child: _EquipmentToolbar(
+                      controller: _searchController,
+                      filterLabel: _statusFilterLabel(_statusFilter),
+                      onSearchChanged: (_) => setState(() {}),
+                      onFilterSelected: (value) {
+                        setState(() {
+                          _statusFilter = value;
+                        });
+                      },
                     ),
                   ),
                   if (viewModel.equipment.isEmpty)
                     const SliverToBoxAdapter(child: _EmptyEquipment())
+                  else if (filteredEquipment.isEmpty)
+                    const SliverToBoxAdapter(child: _EmptySearch())
                   else
                     SliverList(
                       delegate: SliverChildBuilderDelegate((context, index) {
-                        final item = viewModel.equipment[index];
+                        final item = filteredEquipment[index];
                         return Padding(
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                          child: _EquipmentCard(equipment: item),
+                          child: _EquipmentCard(
+                            equipment: item,
+                            onTap: () async {
+                              final result = await Navigator.push<bool>(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => GymEquipmentEditPage(
+                                    gymId: gym.id,
+                                    equipment: item,
+                                  ),
+                                ),
+                              );
+
+                              if (result == true && context.mounted) {
+                                AppAlerts.showSuccess(
+                                  context,
+                                  'Data alat gym berhasil diperbarui',
+                                );
+                              }
+                            },
+                          ),
                         );
-                      }, childCount: viewModel.equipment.length),
+                      }, childCount: filteredEquipment.length),
                     ),
                   const SliverToBoxAdapter(child: SizedBox(height: 12)),
                 ],
@@ -486,107 +558,182 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
+class _EquipmentToolbar extends StatelessWidget {
+  const _EquipmentToolbar({
+    required this.controller,
+    required this.filterLabel,
+    required this.onSearchChanged,
+    required this.onFilterSelected,
+  });
+
+  final TextEditingController controller;
+  final String filterLabel;
+  final ValueChanged<String> onSearchChanged;
+  final ValueChanged<String> onFilterSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: controller,
+              onChanged: onSearchChanged,
+              decoration: InputDecoration(
+                hintText: 'Cari alat gym...',
+                prefixIcon: const Icon(Icons.search_rounded),
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: _primaryColor),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          PopupMenuButton<String>(
+            onSelected: onFilterSelected,
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: _statusFilterAll,
+                child: Text('Semua Status'),
+              ),
+              const PopupMenuItem(value: 'BAIK', child: Text('BAIK')),
+              const PopupMenuItem(
+                value: 'BUTUH_PERAWATAN',
+                child: Text('BUTUH PERAWATAN'),
+              ),
+              const PopupMenuItem(value: 'RUSAK', child: Text('RUSAK')),
+            ],
+            child: Container(
+              height: 48,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE1E4EC)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.filter_list_rounded, size: 18),
+                  const SizedBox(width: 6),
+                  Text(
+                    filterLabel,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _EquipmentCard extends StatelessWidget {
-  const _EquipmentCard({required this.equipment});
+  const _EquipmentCard({required this.equipment, this.onTap});
 
   final GymEquipment equipment;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final statusColor = _resolveHealthColor(equipment.healthStatus);
+    final statusLabel = _healthStatusLabel(equipment.healthStatus);
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _EquipmentImage(url: equipment.photo),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        equipment.name,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _EquipmentImage(url: equipment.photo),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          equipment.name,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                       ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: statusColor.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        equipment.healthStatus.toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: statusColor,
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: statusColor.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          statusLabel,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: statusColor,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  equipment.description,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.inventory_2_outlined,
-                      size: 14,
-                      color: _primaryColor,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Jumlah: ${equipment.jumlah}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.inventory_2_outlined,
+                        size: 14,
                         color: _primaryColor,
                       ),
-                    ),
-                  ],
-                ),
-                if (_hasValue(equipment.videoUrl)) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    'Video: ${equipment.videoUrl}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Jumlah: ${equipment.jumlah}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: _primaryColor,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -696,6 +843,44 @@ class _EmptyEquipment extends StatelessWidget {
   }
 }
 
+class _EmptySearch extends StatelessWidget {
+  const _EmptySearch();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: const Color(0xFFEDEEFF),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.search_off_rounded, color: _primaryColor),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Tidak ada alat yang sesuai filter.',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _ErrorState extends StatelessWidget {
   const _ErrorState({required this.message, required this.onRetry});
 
@@ -761,6 +946,8 @@ Color _resolveHealthColor(String status) {
   switch (status.toUpperCase()) {
     case 'BAIK':
       return Colors.green.shade600;
+    case 'BUTUH_PERAWATAN':
+      return Colors.amber.shade700;
     case 'PERBAIKAN':
       return Colors.orange.shade700;
     case 'RUSAK':
@@ -769,3 +956,21 @@ Color _resolveHealthColor(String status) {
       return Colors.blueGrey.shade600;
   }
 }
+
+String _healthStatusLabel(String status) {
+  switch (status.toUpperCase()) {
+    case 'BUTUH_PERAWATAN':
+      return 'BUTUH PERAWATAN';
+    default:
+      return status.toUpperCase();
+  }
+}
+
+String _statusFilterLabel(String status) {
+  if (status == _statusFilterAll) {
+    return 'Semua';
+  }
+  return _healthStatusLabel(status);
+}
+
+const _statusFilterAll = 'ALL';

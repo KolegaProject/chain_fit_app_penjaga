@@ -1,3 +1,29 @@
+class GymEquipmentDetailResponse {
+  GymEquipmentDetailResponse({
+    required this.code,
+    required this.status,
+    required this.recordsTotal,
+    required this.data,
+  });
+
+  final int code;
+  final String status;
+  final int recordsTotal;
+  final GymEquipment data;
+
+  factory GymEquipmentDetailResponse.fromJson(Map<String, dynamic> json) {
+    final dataJson =
+        json['data'] as Map<String, dynamic>? ?? <String, dynamic>{};
+
+    return GymEquipmentDetailResponse(
+      code: (json['code'] as num?)?.toInt() ?? 0,
+      status: json['status'] as String? ?? '-',
+      recordsTotal: (json['recordsTotal'] as num?)?.toInt() ?? 0,
+      data: GymEquipment.fromJson(dataJson),
+    );
+  }
+}
+
 class GymEquipmentResponse {
   GymEquipmentResponse({
     required this.code,
