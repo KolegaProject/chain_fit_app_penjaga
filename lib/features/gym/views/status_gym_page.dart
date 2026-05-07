@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/utils/app_alerts.dart';
 import '../../auth/models/me_response.dart';
 import '../../auth/viewmodels/login_view_model.dart';
 import '../models/gym_detail_response.dart';
 import '../models/gym_equipment_response.dart';
+import 'gym_edit_page.dart';
 import '../viewmodels/status_gym_view_model.dart';
 
 const _pageBackground = Color(0xFFF7F8FB);
@@ -88,7 +90,27 @@ class _StatusGymPageState extends State<StatusGymPage> {
               child: CustomScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 slivers: [
-                  SliverToBoxAdapter(child: _GymHeader(gym: gym)),
+                  SliverToBoxAdapter(
+                    child: _GymHeader(
+                      gym: gym,
+                      isUpdating: viewModel.isUpdating,
+                      onEdit: () async {
+                        final result = await Navigator.push<bool>(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => GymEditPage(gym: gym),
+                          ),
+                        );
+
+                        if (result == true && context.mounted) {
+                          AppAlerts.showSuccess(
+                            context,
+                            'Informasi gym berhasil diperbarui',
+                          );
+                        }
+                      },
+                    ),
+                  ),
                   if (viewModel.errorMessage != null) ...[
                     SliverToBoxAdapter(
                       child: _InlineError(message: viewModel.errorMessage!),
@@ -124,9 +146,15 @@ class _StatusGymPageState extends State<StatusGymPage> {
 }
 
 class _GymHeader extends StatelessWidget {
-  const _GymHeader({required this.gym});
+  const _GymHeader({
+    required this.gym,
+    required this.onEdit,
+    required this.isUpdating,
+  });
 
   final GymDetail gym;
+  final VoidCallback onEdit;
+  final bool isUpdating;
 
   @override
   Widget build(BuildContext context) {
@@ -185,6 +213,31 @@ class _GymHeader extends StatelessWidget {
                           ),
                           _VerifiedPill(status: gym.verified),
                         ],
+                      ),
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: OutlinedButton.icon(
+                          onPressed: isUpdating ? null : onEdit,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: _primaryColor,
+                            side: BorderSide(
+                              color: _primaryColor.withValues(alpha: 0.4),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          icon: const Icon(Icons.edit_outlined, size: 16),
+                          label: const Text(
+                            'Edit Gym',
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 8),
                       if (_hasValue(gym.description))

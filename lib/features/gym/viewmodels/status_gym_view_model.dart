@@ -12,12 +12,14 @@ class StatusGymViewModel extends ChangeNotifier {
   final AuthTokenStorage _tokenStorage;
 
   bool _isLoading = false;
+  bool _isUpdating = false;
   String? _errorMessage;
   GymDetail? _gymDetail;
   List<GymEquipment> _equipment = [];
   int? _currentGymId;
 
   bool get isLoading => _isLoading;
+  bool get isUpdating => _isUpdating;
   String? get errorMessage => _errorMessage;
   GymDetail? get gymDetail => _gymDetail;
   List<GymEquipment> get equipment => List.unmodifiable(_equipment);
@@ -67,5 +69,54 @@ class StatusGymViewModel extends ChangeNotifier {
     }
 
     await loadGym(gymId);
+  }
+
+  Future<GymDetail?> updateGym({
+    required int gymId,
+    required String name,
+    required int maxCapacity,
+    required String address,
+    required String jamOperasional,
+    required String description,
+    required List<String> facility,
+    required String tag,
+  }) async {
+    _isUpdating = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final tokens = await _tokenStorage.readTokens();
+      final accessToken = tokens?.accessToken;
+      if (accessToken == null || accessToken.isEmpty) {
+        throw Exception('Sesi tidak ditemukan, silakan login ulang.');
+      }
+
+      const fixedLatitude = '-6.9202';
+      const fixedLongitude = '107.6084';
+
+      final updated = await _repository.updateGym(
+        gymId: gymId,
+        accessToken: accessToken,
+        name: name,
+        maxCapacity: maxCapacity,
+        address: address,
+        jamOperasional: jamOperasional,
+        description: description,
+        latitude: fixedLatitude,
+        longitude: fixedLongitude,
+        facility: facility,
+        tag: tag,
+      );
+
+      _gymDetail = updated;
+      return updated;
+    } catch (e) {
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      return null;
+    } finally {
+      _isUpdating = false;
+      notifyListeners();
+    }
   }
 }

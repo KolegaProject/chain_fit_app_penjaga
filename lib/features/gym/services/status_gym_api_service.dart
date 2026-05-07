@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 
 import '../../../core/constants/app_config.dart';
@@ -52,6 +54,61 @@ class StatusGymApiService {
       }
 
       throw Exception('Gagal mengambil data alat gym.');
+    }
+  }
+
+  Future<GymDetail> updateGym({
+    required int gymId,
+    required String accessToken,
+    required String name,
+    required int maxCapacity,
+    required String address,
+    required String jamOperasional,
+    required String description,
+    required String latitude,
+    required String longitude,
+    required List<String> facility,
+    required String tag,
+  }) async {
+    try {
+      final payload = <String, dynamic>{
+        'name': name,
+        'maxCp': maxCapacity,
+        'address': address,
+        'jamOperasional': jamOperasional,
+        'description': description,
+        'lat': latitude,
+        'long': longitude,
+        'fac': jsonEncode(facility),
+        'tag': tag,
+      };
+
+      final formData = FormData.fromMap(payload);
+
+      final response = await _dio.put<Map<String, dynamic>>(
+        AppConfig.gymDetailEndpoint(gymId),
+        data: formData,
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $accessToken',
+            'Content-Type': 'multipart/form-data',
+          },
+        ),
+      );
+
+      final data = response.data;
+      if (data == null) {
+        throw Exception('Response update gym kosong');
+      }
+
+      return GymDetailResponse.fromJson(data).data;
+    } on DioException catch (e) {
+      final message = _extractErrorMessage(e.response?.data);
+      if (message != null && message.isNotEmpty) {
+        throw Exception(message);
+      }
+
+      throw Exception('Gagal memperbarui data gym.');
     }
   }
 
