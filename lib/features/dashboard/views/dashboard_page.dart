@@ -4,7 +4,7 @@ import '../../auth/models/me_response.dart';
 import '../../home/views/home_page.dart';
 import '../../profile/views/profile_page.dart';
 import '../../scan/views/scan_page.dart';
-import '../../status_gym/views/status_gym_page.dart';
+import '../../gym/views/status_gym_page.dart';
 
 class DashboardArgs {
   DashboardArgs({
@@ -83,7 +83,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
                 BottomNavigationBarItem(
                   icon: Icon(Icons.fitness_center_rounded),
-                  label: 'Status Gym',
+                  label: 'Gym',
                 ),
                 BottomNavigationBarItem(
                   icon: Icon(Icons.qr_code_scanner_rounded),

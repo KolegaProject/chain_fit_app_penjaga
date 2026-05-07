@@ -9,4 +9,8 @@ class AppConfig {
   static const String loginEndpoint = '/api/v1/auth/login';
   static const String meEndpoint = '/api/v1/auth/me';
   static const String updateMeEndpoint = '/api/v1/auth/me/update';
+
+  static String gymDetailEndpoint(int gymId) => '/api/v1/gym/$gymId';
+  static String gymEquipmentEndpoint(int gymId) =>
+      '/api/v1/gym/$gymId/equipment';
 }

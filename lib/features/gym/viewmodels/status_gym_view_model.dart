@@ -1,0 +1,71 @@
+import 'package:flutter/foundation.dart';
+
+import '../../../core/storage/auth_token_storage.dart';
+import '../models/gym_detail_response.dart';
+import '../models/gym_equipment_response.dart';
+import '../repositories/status_gym_repository.dart';
+
+class StatusGymViewModel extends ChangeNotifier {
+  StatusGymViewModel(this._repository, this._tokenStorage);
+
+  final StatusGymRepository _repository;
+  final AuthTokenStorage _tokenStorage;
+
+  bool _isLoading = false;
+  String? _errorMessage;
+  GymDetail? _gymDetail;
+  List<GymEquipment> _equipment = [];
+  int? _currentGymId;
+
+  bool get isLoading => _isLoading;
+  String? get errorMessage => _errorMessage;
+  GymDetail? get gymDetail => _gymDetail;
+  List<GymEquipment> get equipment => List.unmodifiable(_equipment);
+  int? get currentGymId => _currentGymId;
+
+  Future<void> loadGym(int gymId) async {
+    _isLoading = true;
+    _errorMessage = null;
+    _currentGymId = gymId;
+    notifyListeners();
+
+    try {
+      final tokens = await _tokenStorage.readTokens();
+      final accessToken = tokens?.accessToken;
+      if (accessToken == null || accessToken.isEmpty) {
+        throw Exception('Sesi tidak ditemukan, silakan login ulang.');
+      }
+
+      final detailFuture = _repository.getGymDetail(
+        gymId: gymId,
+        accessToken: accessToken,
+      );
+      final equipmentFuture = _repository.getEquipment(
+        gymId: gymId,
+        accessToken: accessToken,
+      );
+
+      final detail = await detailFuture;
+      final equipment = await equipmentFuture;
+
+      _gymDetail = detail;
+      _equipment = equipment;
+    } catch (e) {
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      _gymDetail = null;
+      _equipment = [];
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> refresh() async {
+    final gymId = _currentGymId;
+    if (gymId == null) {
+      return;
+    }
+
+    await loadGym(gymId);
+  }
+}
