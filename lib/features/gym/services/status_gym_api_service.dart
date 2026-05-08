@@ -119,16 +119,14 @@ class StatusGymApiService {
     required String name,
     required int jumlah,
     required String description,
-    required String healthStatus,
     String? videoUrl,
     String? imagePath,
   }) async {
     try {
       final payload = <String, dynamic>{
         'name': name,
-        'jumlah': jumlah,
+        'jum': jumlah,
         'description': description,
-        'healthStatus': healthStatus,
       };
 
       if (videoUrl != null) {
@@ -169,6 +167,63 @@ class StatusGymApiService {
       }
 
       throw Exception('Gagal memperbarui alat gym.');
+    }
+  }
+
+  Future<GymEquipment> createEquipment({
+    required int gymId,
+    required String accessToken,
+    required String name,
+    required int jumlah,
+    required String description,
+    String? videoUrl,
+    String? imagePath,
+  }) async {
+    try {
+      final payload = <String, dynamic>{
+        'name': name,
+        'jum': jumlah,
+        'description': description,
+      };
+
+      if (videoUrl != null) {
+        payload['videoURL'] = videoUrl;
+      }
+
+      final trimmedImagePath = (imagePath ?? '').trim();
+      if (trimmedImagePath.isNotEmpty) {
+        payload['image'] = await MultipartFile.fromFile(
+          trimmedImagePath,
+          filename: trimmedImagePath.split('/').last,
+        );
+      }
+
+      final formData = FormData.fromMap(payload);
+
+      final response = await _dio.post<Map<String, dynamic>>(
+        AppConfig.gymEquipmentEndpoint(gymId),
+        data: formData,
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $accessToken',
+            'Content-Type': 'multipart/form-data',
+          },
+        ),
+      );
+
+      final data = response.data;
+      if (data == null) {
+        throw Exception('Response tambah alat gym kosong');
+      }
+
+      return GymEquipmentDetailResponse.fromJson(data).data;
+    } on DioException catch (e) {
+      final message = _extractErrorMessage(e.response?.data);
+      if (message != null && message.isNotEmpty) {
+        throw Exception(message);
+      }
+
+      throw Exception('Gagal menambah alat gym.');
     }
   }
 

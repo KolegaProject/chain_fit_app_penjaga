@@ -56,7 +56,6 @@ class StatusGymRepository {
     required String name,
     required int jumlah,
     required String description,
-    required String healthStatus,
     String? videoUrl,
     String? imagePath,
   }) {
@@ -67,7 +66,26 @@ class StatusGymRepository {
       name: name,
       jumlah: jumlah,
       description: description,
-      healthStatus: healthStatus,
+      videoUrl: videoUrl,
+      imagePath: imagePath,
+    );
+  }
+
+  Future<GymEquipment> createEquipment({
+    required int gymId,
+    required String accessToken,
+    required String name,
+    required int jumlah,
+    required String description,
+    String? videoUrl,
+    String? imagePath,
+  }) {
+    return _apiService.createEquipment(
+      gymId: gymId,
+      accessToken: accessToken,
+      name: name,
+      jumlah: jumlah,
+      description: description,
       videoUrl: videoUrl,
       imagePath: imagePath,
     );

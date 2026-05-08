@@ -6,6 +6,7 @@ import '../../auth/models/me_response.dart';
 import '../../auth/viewmodels/login_view_model.dart';
 import '../models/gym_detail_response.dart';
 import '../models/gym_equipment_response.dart';
+import 'gym_equipment_create_page.dart';
 import 'gym_edit_page.dart';
 import 'gym_equipment_edit_page.dart';
 import '../viewmodels/status_gym_view_model.dart';
@@ -24,6 +25,7 @@ class _StatusGymPageState extends State<StatusGymPage> {
   int? _loadedGymId;
   final TextEditingController _searchController = TextEditingController();
   String _statusFilter = _statusFilterAll;
+  int _visibleEquipmentCount = _initialEquipmentLimit;
 
   @override
   void dispose() {
@@ -52,6 +54,8 @@ class _StatusGymPageState extends State<StatusGymPage> {
 
         viewModel.loadGym(gymId);
       });
+
+      _resetVisibleEquipmentCount();
     }
   }
 
@@ -91,6 +95,16 @@ class _StatusGymPageState extends State<StatusGymPage> {
     }).toList();
   }
 
+  void _resetVisibleEquipmentCount() {
+    _visibleEquipmentCount = _initialEquipmentLimit;
+  }
+
+  void _showMoreEquipment() {
+    setState(() {
+      _visibleEquipmentCount += _initialEquipmentLimit;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -122,6 +136,9 @@ class _StatusGymPageState extends State<StatusGymPage> {
             }
 
             final filteredEquipment = _filterEquipment(viewModel.equipment);
+            final visibleEquipment = filteredEquipment
+                .take(_visibleEquipmentCount)
+                .toList();
 
             return RefreshIndicator(
               onRefresh: viewModel.refresh,
@@ -164,11 +181,35 @@ class _StatusGymPageState extends State<StatusGymPage> {
                     child: _EquipmentToolbar(
                       controller: _searchController,
                       filterLabel: _statusFilterLabel(_statusFilter),
-                      onSearchChanged: (_) => setState(() {}),
+                      onSearchChanged: (_) {
+                        setState(() {
+                          _resetVisibleEquipmentCount();
+                        });
+                      },
                       onFilterSelected: (value) {
                         setState(() {
                           _statusFilter = value;
+                          _resetVisibleEquipmentCount();
                         });
+                      },
+                      onAddPressed: () async {
+                        final result = await Navigator.push<bool>(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                GymEquipmentCreatePage(gymId: gym.id),
+                          ),
+                        );
+
+                        if (result == true && context.mounted) {
+                          setState(() {
+                            _resetVisibleEquipmentCount();
+                          });
+                          AppAlerts.showSuccess(
+                            context,
+                            'Alat gym baru berhasil ditambahkan',
+                          );
+                        }
                       },
                     ),
                   ),
@@ -179,7 +220,7 @@ class _StatusGymPageState extends State<StatusGymPage> {
                   else
                     SliverList(
                       delegate: SliverChildBuilderDelegate((context, index) {
-                        final item = filteredEquipment[index];
+                        final item = visibleEquipment[index];
                         return Padding(
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                           child: _EquipmentCard(
@@ -204,7 +245,11 @@ class _StatusGymPageState extends State<StatusGymPage> {
                             },
                           ),
                         );
-                      }, childCount: filteredEquipment.length),
+                      }, childCount: visibleEquipment.length),
+                    ),
+                  if (filteredEquipment.length > visibleEquipment.length)
+                    SliverToBoxAdapter(
+                      child: _LoadMoreButton(onPressed: _showMoreEquipment),
                     ),
                   const SliverToBoxAdapter(child: SizedBox(height: 12)),
                 ],
@@ -564,80 +609,137 @@ class _EquipmentToolbar extends StatelessWidget {
     required this.filterLabel,
     required this.onSearchChanged,
     required this.onFilterSelected,
+    required this.onAddPressed,
   });
 
   final TextEditingController controller;
   final String filterLabel;
   final ValueChanged<String> onSearchChanged;
   final ValueChanged<String> onFilterSelected;
+  final VoidCallback onAddPressed;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      child: Row(
+      child: Column(
         children: [
-          Expanded(
-            child: TextField(
-              controller: controller,
-              onChanged: onSearchChanged,
-              decoration: InputDecoration(
-                hintText: 'Cari alat gym...',
-                prefixIcon: const Icon(Icons.search_rounded),
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: _primaryColor),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          PopupMenuButton<String>(
-            onSelected: onFilterSelected,
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: _statusFilterAll,
-                child: Text('Semua Status'),
-              ),
-              const PopupMenuItem(value: 'BAIK', child: Text('BAIK')),
-              const PopupMenuItem(
-                value: 'BUTUH_PERAWATAN',
-                child: Text('BUTUH PERAWATAN'),
-              ),
-              const PopupMenuItem(value: 'RUSAK', child: Text('RUSAK')),
-            ],
-            child: Container(
-              height: 48,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE1E4EC)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.filter_list_rounded, size: 18),
-                  const SizedBox(width: 6),
-                  Text(
-                    filterLabel,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  onChanged: onSearchChanged,
+                  decoration: InputDecoration(
+                    hintText: 'Cari alat gym...',
+                    prefixIcon: const Icon(Icons.search_rounded),
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: _primaryColor),
+                    ),
                   ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              PopupMenuButton<String>(
+                onSelected: onFilterSelected,
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: _statusFilterAll,
+                    child: Text('Semua Status'),
+                  ),
+                  const PopupMenuItem(value: 'BAIK', child: Text('BAIK')),
+                  const PopupMenuItem(
+                    value: 'BUTUH_PERAWATAN',
+                    child: Text('BUTUH PERAWATAN'),
+                  ),
+                  const PopupMenuItem(value: 'RUSAK', child: Text('RUSAK')),
                 ],
+                child: Container(
+                  height: 48,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE1E4EC)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.filter_list_rounded, size: 18),
+                      const SizedBox(width: 6),
+                      Text(
+                        filterLabel,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: onAddPressed,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _primaryColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              icon: const Icon(Icons.add_rounded),
+              label: const Text(
+                'Tambah Alat Baru',
+                style: TextStyle(fontWeight: FontWeight.w700),
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _LoadMoreButton extends StatelessWidget {
+  const _LoadMoreButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+      child: SizedBox(
+        width: double.infinity,
+        child: OutlinedButton(
+          onPressed: onPressed,
+          style: OutlinedButton.styleFrom(
+            foregroundColor: _primaryColor,
+            side: BorderSide(color: _primaryColor.withValues(alpha: 0.35)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            padding: const EdgeInsets.symmetric(vertical: 12),
+          ),
+          child: const Text(
+            'Tampilkan Lebih Banyak',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+        ),
       ),
     );
   }
@@ -974,3 +1076,4 @@ String _statusFilterLabel(String status) {
 }
 
 const _statusFilterAll = 'ALL';
+const _initialEquipmentLimit = 5;

@@ -136,7 +136,6 @@ class StatusGymViewModel extends ChangeNotifier {
     required String name,
     required int jumlah,
     required String description,
-    required String healthStatus,
     String? videoUrl,
     String? imagePath,
   }) async {
@@ -158,7 +157,6 @@ class StatusGymViewModel extends ChangeNotifier {
         name: name,
         jumlah: jumlah,
         description: description,
-        healthStatus: healthStatus,
         videoUrl: videoUrl,
         imagePath: imagePath,
       );
@@ -173,6 +171,46 @@ class StatusGymViewModel extends ChangeNotifier {
       _equipment = next;
 
       return updated;
+    } catch (e) {
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      return null;
+    } finally {
+      _isUpdatingEquipment = false;
+      notifyListeners();
+    }
+  }
+
+  Future<GymEquipment?> createEquipment({
+    required int gymId,
+    required String name,
+    required int jumlah,
+    required String description,
+    String? videoUrl,
+    String? imagePath,
+  }) async {
+    _isUpdatingEquipment = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final tokens = await _tokenStorage.readTokens();
+      final accessToken = tokens?.accessToken;
+      if (accessToken == null || accessToken.isEmpty) {
+        throw Exception('Sesi tidak ditemukan, silakan login ulang.');
+      }
+
+      final created = await _repository.createEquipment(
+        gymId: gymId,
+        accessToken: accessToken,
+        name: name,
+        jumlah: jumlah,
+        description: description,
+        videoUrl: videoUrl,
+        imagePath: imagePath,
+      );
+
+      _equipment = [created, ..._equipment];
+      return created;
     } catch (e) {
       _errorMessage = e.toString().replaceFirst('Exception: ', '');
       return null;

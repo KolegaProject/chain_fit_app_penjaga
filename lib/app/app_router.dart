@@ -16,6 +16,9 @@ import '../features/profile/viewmodels/profile_view_model.dart';
 import '../features/gym/repositories/status_gym_repository.dart';
 import '../features/gym/services/status_gym_api_service.dart';
 import '../features/gym/viewmodels/status_gym_view_model.dart';
+import '../features/scan/repositories/attendance_repository.dart';
+import '../features/scan/services/attendance_api_service.dart';
+import '../features/scan/viewmodels/scan_view_model.dart';
 
 class AppRouter extends StatelessWidget {
   const AppRouter({super.key});
@@ -29,6 +32,8 @@ class AppRouter extends StatelessWidget {
     final profileRepository = ProfileRepository(profileApiService);
     final statusGymApiService = StatusGymApiService(dio);
     final statusGymRepository = StatusGymRepository(statusGymApiService);
+    final attendanceApiService = AttendanceApiService(dio);
+    final attendanceRepository = AttendanceRepository(attendanceApiService);
     final tokenStorage = AuthTokenStorage(const FlutterSecureStorage());
 
     return MultiProvider(
@@ -41,6 +46,9 @@ class AppRouter extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (_) => StatusGymViewModel(statusGymRepository, tokenStorage),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => ScanViewModel(attendanceRepository, tokenStorage),
         ),
       ],
       child: MaterialApp(

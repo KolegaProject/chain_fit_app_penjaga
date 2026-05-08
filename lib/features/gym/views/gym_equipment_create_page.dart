@@ -5,30 +5,25 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/utils/app_alerts.dart';
-import '../models/gym_equipment_response.dart';
 import '../viewmodels/status_gym_view_model.dart';
 
-class GymEquipmentEditPage extends StatefulWidget {
-  const GymEquipmentEditPage({
-    super.key,
-    required this.gymId,
-    required this.equipment,
-  });
+class GymEquipmentCreatePage extends StatefulWidget {
+  const GymEquipmentCreatePage({super.key, required this.gymId});
 
   final int gymId;
-  final GymEquipment equipment;
 
   @override
-  State<GymEquipmentEditPage> createState() => _GymEquipmentEditPageState();
+  State<GymEquipmentCreatePage> createState() => _GymEquipmentCreatePageState();
 }
 
-class _GymEquipmentEditPageState extends State<GymEquipmentEditPage> {
+class _GymEquipmentCreatePageState extends State<GymEquipmentCreatePage> {
   final _formKey = GlobalKey<FormState>();
 
   late final TextEditingController _nameController;
   late final TextEditingController _jumlahController;
   late final TextEditingController _descriptionController;
   late final TextEditingController _videoUrlController;
+
   final ImagePicker _imagePicker = ImagePicker();
   XFile? _pickedImage;
   Uint8List? _pickedImageBytes;
@@ -36,16 +31,10 @@ class _GymEquipmentEditPageState extends State<GymEquipmentEditPage> {
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.equipment.name);
-    _jumlahController = TextEditingController(
-      text: widget.equipment.jumlah.toString(),
-    );
-    _descriptionController = TextEditingController(
-      text: widget.equipment.description,
-    );
-    _videoUrlController = TextEditingController(
-      text: widget.equipment.videoUrl,
-    );
+    _nameController = TextEditingController();
+    _jumlahController = TextEditingController();
+    _descriptionController = TextEditingController();
+    _videoUrlController = TextEditingController();
   }
 
   @override
@@ -92,9 +81,8 @@ class _GymEquipmentEditPageState extends State<GymEquipmentEditPage> {
     }
 
     final viewModel = context.read<StatusGymViewModel>();
-    final updated = await viewModel.updateEquipment(
+    final created = await viewModel.createEquipment(
       gymId: widget.gymId,
-      equipmentId: widget.equipment.id,
       name: _nameController.text.trim(),
       jumlah: jumlah,
       description: _descriptionController.text.trim(),
@@ -106,13 +94,12 @@ class _GymEquipmentEditPageState extends State<GymEquipmentEditPage> {
       return;
     }
 
-    if (updated != null) {
+    if (created != null) {
       Navigator.pop(context, true);
       return;
     }
 
-    final message =
-        viewModel.errorMessage ?? 'Gagal memperbarui data alat gym.';
+    final message = viewModel.errorMessage ?? 'Gagal menambah alat gym.';
     AppAlerts.showError(context, message);
   }
 
@@ -124,7 +111,7 @@ class _GymEquipmentEditPageState extends State<GymEquipmentEditPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Edit Alat Gym'),
+        title: const Text('Tambah Alat Gym'),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black87,
         elevation: 0,
@@ -164,10 +151,7 @@ class _GymEquipmentEditPageState extends State<GymEquipmentEditPage> {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    _PhotoPreview(
-                      bytes: _pickedImageBytes,
-                      imageUrl: widget.equipment.photo,
-                    ),
+                    _PhotoPreview(bytes: _pickedImageBytes),
                     const SizedBox(width: 12),
                     Expanded(
                       child: OutlinedButton.icon(
@@ -295,10 +279,9 @@ class _InputField extends StatelessWidget {
 }
 
 class _PhotoPreview extends StatelessWidget {
-  const _PhotoPreview({required this.bytes, required this.imageUrl});
+  const _PhotoPreview({required this.bytes});
 
   final Uint8List? bytes;
-  final String imageUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -308,27 +291,10 @@ class _PhotoPreview extends StatelessWidget {
         width: 84,
         height: 84,
         color: const Color(0xFFF1F3F6),
-        child: _buildContent(),
+        child: bytes == null
+            ? const Icon(Icons.image_outlined, color: Colors.grey)
+            : Image.memory(bytes!, fit: BoxFit.cover),
       ),
-    );
-  }
-
-  Widget _buildContent() {
-    if (bytes != null) {
-      return Image.memory(bytes!, fit: BoxFit.cover);
-    }
-
-    final url = imageUrl.trim();
-    if (url.isEmpty) {
-      return const Icon(Icons.image_outlined, color: Colors.grey);
-    }
-
-    return Image.network(
-      url,
-      fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) {
-        return const Icon(Icons.broken_image_outlined, color: Colors.grey);
-      },
     );
   }
 }
