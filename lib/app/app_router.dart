@@ -10,6 +10,9 @@ import '../features/auth/viewmodels/login_view_model.dart';
 import '../features/auth/views/login_page.dart';
 import '../features/auth/models/me_response.dart';
 import '../features/dashboard/views/dashboard_page.dart';
+import '../features/dashboard/repositories/attendance_repository.dart';
+import '../features/dashboard/services/attendance_api_service.dart';
+import '../features/dashboard/viewmodels/dashboard_view_model.dart';
 import '../features/profile/repositories/profile_repository.dart';
 import '../features/profile/services/profile_api_service.dart';
 import '../features/profile/viewmodels/profile_view_model.dart';
@@ -32,6 +35,10 @@ class AppRouter extends StatelessWidget {
     final profileRepository = ProfileRepository(profileApiService);
     final statusGymApiService = StatusGymApiService(dio);
     final statusGymRepository = StatusGymRepository(statusGymApiService);
+    final dashboardAttendanceApiService = DashboardAttendanceApiService(dio);
+    final dashboardAttendanceRepository = DashboardAttendanceRepository(
+      dashboardAttendanceApiService,
+    );
     final attendanceApiService = AttendanceApiService(dio);
     final attendanceRepository = AttendanceRepository(attendanceApiService);
     final tokenStorage = AuthTokenStorage(const FlutterSecureStorage());
@@ -46,6 +53,13 @@ class AppRouter extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (_) => StatusGymViewModel(statusGymRepository, tokenStorage),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => DashboardViewModel(
+            dashboardAttendanceRepository,
+            statusGymRepository,
+            tokenStorage,
+          ),
         ),
         ChangeNotifierProvider(
           create: (_) => ScanViewModel(attendanceRepository, tokenStorage),
