@@ -21,4 +21,6 @@ class AppConfig {
       '/api/v1/gym/$gymId/equipment';
   static String gymEquipmentDetailEndpoint(int gymId, int equipmentId) =>
       '/api/v1/gym/$gymId/equipment/$equipmentId';
+  static String gymMembershipEndpoint(int gymId) =>
+      '/api/v1/gym/$gymId/memberships';
 }

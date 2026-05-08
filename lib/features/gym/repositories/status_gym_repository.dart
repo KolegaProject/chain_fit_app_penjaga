@@ -1,5 +1,6 @@
 import '../models/gym_detail_response.dart';
 import '../models/gym_equipment_response.dart';
+import '../models/gym_membership_response.dart';
 import '../services/status_gym_api_service.dart';
 
 class StatusGymRepository {
@@ -19,6 +20,13 @@ class StatusGymRepository {
     required String accessToken,
   }) {
     return _apiService.getEquipment(gymId, accessToken);
+  }
+
+  Future<List<GymMembership>> getMemberships({
+    required int gymId,
+    required String accessToken,
+  }) {
+    return _apiService.getMemberships(gymId, accessToken);
   }
 
   Future<GymDetail> updateGym({

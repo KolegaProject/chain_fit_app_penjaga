@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import '../../../core/constants/app_config.dart';
 import '../models/gym_detail_response.dart';
 import '../models/gym_equipment_response.dart';
+import '../models/gym_membership_response.dart';
 
 class StatusGymApiService {
   StatusGymApiService(this._dio);
@@ -54,6 +55,32 @@ class StatusGymApiService {
       }
 
       throw Exception('Gagal mengambil data alat gym.');
+    }
+  }
+
+  Future<List<GymMembership>> getMemberships(
+    int gymId,
+    String accessToken,
+  ) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        AppConfig.gymMembershipEndpoint(gymId),
+        options: Options(headers: {'Authorization': 'Bearer $accessToken'}),
+      );
+
+      final data = response.data;
+      if (data == null) {
+        throw Exception('Response member gym kosong');
+      }
+
+      return GymMembershipResponse.fromJson(data).data;
+    } on DioException catch (e) {
+      final message = _extractErrorMessage(e.response?.data);
+      if (message != null && message.isNotEmpty) {
+        throw Exception(message);
+      }
+
+      throw Exception('Gagal mengambil data member gym.');
     }
   }
 

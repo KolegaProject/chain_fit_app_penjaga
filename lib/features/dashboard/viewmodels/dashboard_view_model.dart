@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../../core/storage/auth_token_storage.dart';
 import '../../gym/models/gym_equipment_response.dart';
+import '../../gym/models/gym_membership_response.dart';
 import '../../gym/repositories/status_gym_repository.dart';
 import '../models/attendance_response.dart';
 import '../repositories/attendance_repository.dart';
@@ -23,6 +24,7 @@ class DashboardViewModel extends ChangeNotifier {
   final Set<int> _checkingOutIds = {};
   List<AttendanceEntry> _activeAttendances = [];
   List<GymEquipment> _problemEquipment = [];
+  List<GymMembership> _gymMemberships = [];
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -31,6 +33,7 @@ class DashboardViewModel extends ChangeNotifier {
       List.unmodifiable(_activeAttendances);
   List<GymEquipment> get problemEquipment =>
       List.unmodifiable(_problemEquipment);
+  List<GymMembership> get gymMemberships => List.unmodifiable(_gymMemberships);
 
   bool isCheckingOut(int attendanceId) {
     return _checkingOutIds.contains(attendanceId);
@@ -57,9 +60,14 @@ class DashboardViewModel extends ChangeNotifier {
         gymId: gymId,
         accessToken: accessToken,
       );
+      final membershipFuture = _gymRepository.getMemberships(
+        gymId: gymId,
+        accessToken: accessToken,
+      );
 
       final attendanceData = await attendanceFuture;
       final equipmentData = await equipmentFuture;
+      final membershipData = await membershipFuture;
 
       _activeAttendances = attendanceData
           .where((item) => item.checkOutAt == null)
@@ -71,10 +79,13 @@ class DashboardViewModel extends ChangeNotifier {
                 item.healthStatus.toUpperCase() == 'BUTUH_PERAWATAN',
           )
           .toList();
+      _gymMemberships = [...membershipData]
+        ..sort((a, b) => a.masaAktifHari.compareTo(b.masaAktifHari));
     } catch (e) {
       _errorMessage = e.toString().replaceFirst('Exception: ', '');
       _activeAttendances = [];
       _problemEquipment = [];
+      _gymMemberships = [];
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -93,6 +104,7 @@ class DashboardViewModel extends ChangeNotifier {
   void clearDashboard() {
     _activeAttendances = [];
     _problemEquipment = [];
+    _gymMemberships = [];
     _errorMessage = null;
     _currentGymId = null;
     notifyListeners();

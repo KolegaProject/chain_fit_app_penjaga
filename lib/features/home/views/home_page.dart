@@ -7,6 +7,7 @@ import '../../auth/viewmodels/login_view_model.dart';
 import '../../dashboard/models/attendance_response.dart';
 import '../../dashboard/viewmodels/dashboard_view_model.dart';
 import '../../gym/models/gym_equipment_response.dart';
+import '../../gym/models/gym_membership_response.dart';
 
 const _primaryColor = Color(0xFF6366F1);
 
@@ -24,6 +25,8 @@ class _HomePageState extends State<HomePage> {
   final TextEditingController _equipmentSearchController =
       TextEditingController();
   String _equipmentStatusFilter = _statusFilterAll;
+  int _visibleProblemEquipmentCount = _initialListLimit;
+  int _visibleMembershipCount = _initialListLimit;
 
   @override
   void dispose() {
@@ -39,6 +42,7 @@ class _HomePageState extends State<HomePage> {
 
     if (_loadedGymId != gymId) {
       _loadedGymId = gymId;
+      _resetVisibleCounts();
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) {
           return;
@@ -72,6 +76,23 @@ class _HomePageState extends State<HomePage> {
     return null;
   }
 
+  void _resetVisibleCounts() {
+    _visibleProblemEquipmentCount = _initialListLimit;
+    _visibleMembershipCount = _initialListLimit;
+  }
+
+  void _showMoreProblemEquipment() {
+    setState(() {
+      _visibleProblemEquipmentCount += _initialListLimit;
+    });
+  }
+
+  void _showMoreMemberships() {
+    setState(() {
+      _visibleMembershipCount += _initialListLimit;
+    });
+  }
+
   List<GymEquipment> _filterProblemEquipment(List<GymEquipment> items) {
     final query = _equipmentSearchController.text.trim().toLowerCase();
     final filter = _equipmentStatusFilter;
@@ -103,6 +124,13 @@ class _HomePageState extends State<HomePage> {
           final filteredEquipment = _filterProblemEquipment(
             viewModel.problemEquipment,
           );
+          final visibleEquipment = filteredEquipment
+              .take(_visibleProblemEquipmentCount)
+              .toList();
+          final membershipItems = viewModel.gymMemberships;
+          final visibleMemberships = membershipItems
+              .take(_visibleMembershipCount)
+              .toList();
 
           return RefreshIndicator(
             onRefresh: viewModel.refresh,
@@ -199,11 +227,14 @@ class _HomePageState extends State<HomePage> {
                   controller: _equipmentSearchController,
                   filterLabel: _statusFilterLabel(_equipmentStatusFilter),
                   onSearchChanged: (_) {
-                    setState(() {});
+                    setState(() {
+                      _visibleProblemEquipmentCount = _initialListLimit;
+                    });
                   },
                   onFilterSelected: (value) {
                     setState(() {
                       _equipmentStatusFilter = value;
+                      _visibleProblemEquipmentCount = _initialListLimit;
                     });
                   },
                 ),
@@ -220,12 +251,35 @@ class _HomePageState extends State<HomePage> {
                 else if (filteredEquipment.isEmpty)
                   const _EmptyFilteredEquipment()
                 else
-                  ...filteredEquipment.map(
+                  ...visibleEquipment.map(
                     (equipment) => Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: _EquipmentCard(equipment: equipment),
                     ),
                   ),
+                if (filteredEquipment.length > visibleEquipment.length)
+                  _LoadMoreButton(onPressed: _showMoreProblemEquipment),
+                const SizedBox(height: 6),
+                const _SectionTitle(title: 'Member Gym'),
+                const SizedBox(height: 10),
+                if (viewModel.isLoading && membershipItems.isEmpty)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: CircularProgressIndicator(color: _primaryColor),
+                    ),
+                  )
+                else if (membershipItems.isEmpty)
+                  const _EmptyMembership()
+                else
+                  ...visibleMemberships.map(
+                    (membership) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _MembershipCard(membership: membership),
+                    ),
+                  ),
+                if (membershipItems.length > visibleMemberships.length)
+                  _LoadMoreButton(onPressed: _showMoreMemberships),
               ],
             ),
           );
@@ -331,6 +385,37 @@ class _ProblemEquipmentToolbar extends StatelessWidget {
   }
 }
 
+class _LoadMoreButton extends StatelessWidget {
+  const _LoadMoreButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: SizedBox(
+        width: double.infinity,
+        child: OutlinedButton(
+          onPressed: onPressed,
+          style: OutlinedButton.styleFrom(
+            foregroundColor: _primaryColor,
+            side: BorderSide(color: _primaryColor.withValues(alpha: 0.35)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            padding: const EdgeInsets.symmetric(vertical: 12),
+          ),
+          child: const Text(
+            'Tampilkan Lebih Banyak',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _AttendanceCard extends StatelessWidget {
   const _AttendanceCard({
     required this.attendance,
@@ -430,6 +515,101 @@ class _AttendanceCard extends StatelessWidget {
                     )
                   : const Text('Checkout', style: TextStyle(fontSize: 12)),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MembershipCard extends StatelessWidget {
+  const _MembershipCard({required this.membership});
+
+  final GymMembership membership;
+
+  @override
+  Widget build(BuildContext context) {
+    final statusColor = _resolveMembershipStatusColor(membership.status);
+    final statusLabel = _membershipStatusLabel(membership.status);
+    final remainingDays = membership.masaAktifHari;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: const Color(0xFFEDEEFF),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.badge_outlined, color: _primaryColor),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  membership.userName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  membership.userEmail,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  statusLabel,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: statusColor,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Sisa $remainingDays hari',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -582,6 +762,18 @@ class _EmptyEquipment extends StatelessWidget {
   }
 }
 
+class _EmptyMembership extends StatelessWidget {
+  const _EmptyMembership();
+
+  @override
+  Widget build(BuildContext context) {
+    return _EmptyState(
+      icon: Icons.badge_outlined,
+      label: 'Belum ada member terdaftar.',
+    );
+  }
+}
+
 class _EmptyFilteredEquipment extends StatelessWidget {
   const _EmptyFilteredEquipment();
 
@@ -693,6 +885,21 @@ Color _resolveHealthColor(String status) {
   }
 }
 
+Color _resolveMembershipStatusColor(String status) {
+  switch (status.toUpperCase()) {
+    case 'AKTIF':
+      return Colors.green.shade600;
+    case 'NONAKTIF':
+    case 'NON_AKTIF':
+      return Colors.blueGrey.shade600;
+    case 'EXPIRED':
+    case 'KADALUARSA':
+      return Colors.red.shade600;
+    default:
+      return Colors.blueGrey.shade600;
+  }
+}
+
 String _healthStatusLabel(String status) {
   switch (status.toUpperCase()) {
     case 'BUTUH_PERAWATAN':
@@ -700,6 +907,13 @@ String _healthStatusLabel(String status) {
     default:
       return status.toUpperCase();
   }
+}
+
+String _membershipStatusLabel(String status) {
+  if (status.trim().isEmpty) {
+    return '-';
+  }
+  return status.replaceAll('_', ' ').toUpperCase();
 }
 
 String _statusFilterLabel(String status) {
@@ -710,3 +924,4 @@ String _statusFilterLabel(String status) {
 }
 
 const _statusFilterAll = 'ALL';
+const _initialListLimit = 5;
