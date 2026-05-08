@@ -98,16 +98,21 @@ class DashboardViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<String?> checkOut(int attendanceId) async {
-    if (_checkingOutIds.contains(attendanceId)) {
+  Future<String?> checkOut(AttendanceEntry attendance) async {
+    if (_checkingOutIds.contains(attendance.id)) {
       return null;
     }
 
-    _checkingOutIds.add(attendanceId);
+    _checkingOutIds.add(attendance.id);
     _errorMessage = null;
     notifyListeners();
 
     try {
+      final userId = attendance.memberUserId;
+      if (userId == null || userId <= 0) {
+        throw Exception('Data member tidak ditemukan.');
+      }
+
       final tokens = await _tokenStorage.readTokens();
       final accessToken = tokens?.accessToken;
       if (accessToken == null || accessToken.isEmpty) {
@@ -115,19 +120,19 @@ class DashboardViewModel extends ChangeNotifier {
       }
 
       final message = await _attendanceRepository.checkOut(
-        attendanceId: attendanceId,
+        userId: userId,
         accessToken: accessToken,
       );
 
       _activeAttendances = _activeAttendances
-          .where((item) => item.id != attendanceId)
+          .where((item) => item.id != attendance.id)
           .toList();
       return message;
     } catch (e) {
       _errorMessage = e.toString().replaceFirst('Exception: ', '');
       return null;
     } finally {
-      _checkingOutIds.remove(attendanceId);
+      _checkingOutIds.remove(attendance.id);
       notifyListeners();
     }
   }

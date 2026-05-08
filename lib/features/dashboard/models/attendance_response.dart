@@ -35,6 +35,7 @@ class AttendanceEntry {
     required this.createdById,
     required this.createdAt,
     required this.updatedAt,
+    this.membership,
   });
 
   final int id;
@@ -45,8 +46,28 @@ class AttendanceEntry {
   final int createdById;
   final String createdAt;
   final String updatedAt;
+  final AttendanceMembership? membership;
+
+  int? get memberUserId => membership?.user?.id;
+
+  String get memberName {
+    final name = membership?.user?.name ?? '';
+    if (name.trim().isNotEmpty) {
+      return name;
+    }
+
+    if (membershipId > 0) {
+      return 'Member #$membershipId';
+    }
+
+    return 'Member';
+  }
+
+  String get memberProfileImage => membership?.user?.profileImage ?? '';
 
   factory AttendanceEntry.fromJson(Map<String, dynamic> json) {
+    final membershipJson = json['membership'];
+
     return AttendanceEntry(
       id: (json['id'] as num?)?.toInt() ?? 0,
       membershipId: (json['membershipId'] as num?)?.toInt() ?? 0,
@@ -56,6 +77,45 @@ class AttendanceEntry {
       createdById: (json['createdById'] as num?)?.toInt() ?? 0,
       createdAt: json['createdAt'] as String? ?? '-',
       updatedAt: json['updatedAt'] as String? ?? '-',
+      membership: membershipJson is Map<String, dynamic>
+          ? AttendanceMembership.fromJson(membershipJson)
+          : null,
+    );
+  }
+}
+
+class AttendanceMembership {
+  AttendanceMembership({required this.user});
+
+  final AttendanceUser? user;
+
+  factory AttendanceMembership.fromJson(Map<String, dynamic> json) {
+    final userJson = json['user'];
+
+    return AttendanceMembership(
+      user: userJson is Map<String, dynamic>
+          ? AttendanceUser.fromJson(userJson)
+          : null,
+    );
+  }
+}
+
+class AttendanceUser {
+  AttendanceUser({
+    required this.id,
+    required this.name,
+    required this.profileImage,
+  });
+
+  final int id;
+  final String name;
+  final String profileImage;
+
+  factory AttendanceUser.fromJson(Map<String, dynamic> json) {
+    return AttendanceUser(
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      name: json['name'] as String? ?? '',
+      profileImage: json['profileImage'] as String? ?? '',
     );
   }
 }

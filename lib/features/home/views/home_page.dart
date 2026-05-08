@@ -175,9 +175,7 @@ class _HomePageState extends State<HomePage> {
                         attendance: attendance,
                         isCheckingOut: viewModel.isCheckingOut(attendance.id),
                         onCheckout: () async {
-                          final message = await viewModel.checkOut(
-                            attendance.id,
-                          );
+                          final message = await viewModel.checkOut(attendance);
                           if (!context.mounted) {
                             return;
                           }
@@ -346,6 +344,8 @@ class _AttendanceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final avatarUrl = attendance.memberProfileImage;
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -368,7 +368,21 @@ class _AttendanceCard extends StatelessWidget {
               color: const Color(0xFFEDEEFF),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.person_outline, color: _primaryColor),
+            child: avatarUrl.trim().isEmpty
+                ? const Icon(Icons.person_outline, color: _primaryColor)
+                : ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.network(
+                      avatarUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return const Icon(
+                          Icons.person_outline,
+                          color: _primaryColor,
+                        );
+                      },
+                    ),
+                  ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -376,7 +390,9 @@ class _AttendanceCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Member #${attendance.membershipId}',
+                  attendance.memberName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 14,
@@ -384,7 +400,7 @@ class _AttendanceCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Check-in: ${_formatDateTime(attendance.checkInAt)}',
+                  'Member #${attendance.membershipId} - Check-in: ${_formatDateTime(attendance.checkInAt)}',
                   style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                 ),
               ],

@@ -36,13 +36,13 @@ class DashboardAttendanceApiService {
   }
 
   Future<String> checkOut({
-    required int attendanceId,
+    required int userId,
     required String accessToken,
   }) async {
     try {
       final response = await _dio.post<Map<String, dynamic>>(
         AppConfig.attendanceCheckOutEndpoint,
-        data: {'id': attendanceId},
+        data: {'userId': userId},
         options: Options(headers: {'Authorization': 'Bearer $accessToken'}),
       );
 

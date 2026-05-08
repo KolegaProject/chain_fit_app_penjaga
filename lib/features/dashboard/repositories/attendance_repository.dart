@@ -13,13 +13,7 @@ class DashboardAttendanceRepository {
     return _apiService.getAttendances(gymId: gymId, accessToken: accessToken);
   }
 
-  Future<String> checkOut({
-    required int attendanceId,
-    required String accessToken,
-  }) {
-    return _apiService.checkOut(
-      attendanceId: attendanceId,
-      accessToken: accessToken,
-    );
+  Future<String> checkOut({required int userId, required String accessToken}) {
+    return _apiService.checkOut(userId: userId, accessToken: accessToken);
   }
 }
