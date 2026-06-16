@@ -136,6 +136,7 @@ class StatusGymViewModel extends ChangeNotifier {
     required String name,
     required int jumlah,
     required String description,
+    required String healthStatus,
     String? videoUrl,
     String? imagePath,
   }) async {
@@ -157,6 +158,7 @@ class StatusGymViewModel extends ChangeNotifier {
         name: name,
         jumlah: jumlah,
         description: description,
+        healthStatus: healthStatus,
         videoUrl: videoUrl,
         imagePath: imagePath,
       );

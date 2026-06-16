@@ -29,6 +29,7 @@ class _GymEquipmentEditPageState extends State<GymEquipmentEditPage> {
   late final TextEditingController _jumlahController;
   late final TextEditingController _descriptionController;
   late final TextEditingController _videoUrlController;
+  late String _selectedHealthStatus;
   final ImagePicker _imagePicker = ImagePicker();
   XFile? _pickedImage;
   Uint8List? _pickedImageBytes;
@@ -45,6 +46,9 @@ class _GymEquipmentEditPageState extends State<GymEquipmentEditPage> {
     );
     _videoUrlController = TextEditingController(
       text: widget.equipment.videoUrl,
+    );
+    _selectedHealthStatus = _normalizeHealthStatus(
+      widget.equipment.healthStatus,
     );
   }
 
@@ -99,6 +103,7 @@ class _GymEquipmentEditPageState extends State<GymEquipmentEditPage> {
       jumlah: jumlah,
       description: _descriptionController.text.trim(),
       videoUrl: _videoUrlController.text.trim(),
+      healthStatus: _selectedHealthStatus,
       imagePath: _pickedImage?.path,
     );
 
@@ -155,6 +160,20 @@ class _GymEquipmentEditPageState extends State<GymEquipmentEditPage> {
                   controller: _descriptionController,
                   maxLines: 3,
                   validator: _requiredValidator,
+                ),
+                const SizedBox(height: 12),
+                _HealthStatusDropdown(
+                  value: _selectedHealthStatus,
+                  onChanged: isUpdating
+                      ? null
+                      : (value) {
+                          if (value == null) {
+                            return;
+                          }
+                          setState(() {
+                            _selectedHealthStatus = value;
+                          });
+                        },
                 ),
                 const SizedBox(height: 12),
                 const Text(
@@ -249,7 +268,69 @@ class _GymEquipmentEditPageState extends State<GymEquipmentEditPage> {
     }
     return null;
   }
+
+  String _normalizeHealthStatus(String status) {
+    final normalized = status.trim().toUpperCase();
+    if (_healthStatusOptions.any((option) => option.value == normalized)) {
+      return normalized;
+    }
+
+    return _healthStatusOptions.first.value;
+  }
 }
+
+class _HealthStatusDropdown extends StatelessWidget {
+  const _HealthStatusDropdown({required this.value, required this.onChanged});
+
+  final String value;
+  final ValueChanged<String?>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return DropdownButtonFormField<String>(
+      value: value,
+      onChanged: onChanged,
+      decoration: InputDecoration(
+        labelText: 'Health Status',
+        filled: true,
+        fillColor: const Color(0xFFF1F3F6),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFF6366F1)),
+        ),
+      ),
+      items: _healthStatusOptions
+          .map(
+            (option) => DropdownMenuItem<String>(
+              value: option.value,
+              child: Text(option.label),
+            ),
+          )
+          .toList(),
+    );
+  }
+}
+
+class _HealthStatusOption {
+  const _HealthStatusOption({required this.value, required this.label});
+
+  final String value;
+  final String label;
+}
+
+const _healthStatusOptions = [
+  _HealthStatusOption(value: 'BAIK', label: 'Baik'),
+  _HealthStatusOption(value: 'BUTUH_PERAWATAN', label: 'Butuh Perawatan'),
+  _HealthStatusOption(value: 'RUSAK', label: 'Rusak'),
+];
 
 class _InputField extends StatelessWidget {
   const _InputField({

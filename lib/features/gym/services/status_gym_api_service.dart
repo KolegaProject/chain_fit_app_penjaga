@@ -146,14 +146,16 @@ class StatusGymApiService {
     required String name,
     required int jumlah,
     required String description,
+    required String healthStatus,
     String? videoUrl,
     String? imagePath,
   }) async {
     try {
       final payload = <String, dynamic>{
         'name': name,
-        'jum': jumlah,
+        'jumlah': jumlah,
         'description': description,
+        'healthStatus': healthStatus,
       };
 
       if (videoUrl != null) {

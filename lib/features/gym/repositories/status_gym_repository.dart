@@ -64,6 +64,7 @@ class StatusGymRepository {
     required String name,
     required int jumlah,
     required String description,
+    required String healthStatus,
     String? videoUrl,
     String? imagePath,
   }) {
@@ -74,6 +75,7 @@ class StatusGymRepository {
       name: name,
       jumlah: jumlah,
       description: description,
+      healthStatus: healthStatus,
       videoUrl: videoUrl,
       imagePath: imagePath,
     );
